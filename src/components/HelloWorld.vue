@@ -324,62 +324,6 @@
                         </div>
                       </div>
                     </div>
-
-                    <!-- 修改區塊：製作準備（實際操作） -->
-                    <div class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 text-xs text-emerald-800">
-                      <div class="mb-3 font-semibold">製作準備（實際操作）</div>
-
-                      <div class="space-y-3">
-                        <div
-                          v-for="line in productionPreparationDetails"
-                          :key="line.key"
-                          class="rounded-lg border border-emerald-200 bg-white/70 p-3"
-                        >
-                          <div class="font-medium text-emerald-900">
-                            {{ line.label }}：
-                            {{ formatNumber(line.essentialOilMl) }} ml
-                            （約 {{ formatNumber(line.containers) }} 罐）
-                          </div>
-
-                          <div class="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                            <div class="rounded-md border border-emerald-100 bg-white px-3 py-2">
-                              乳油木果油：
-                              <span class="font-semibold">
-                                {{ formatNumber(line.sheaButterGrams) }} g
-                              </span>
-                            </div>
-
-                            <div class="rounded-md border border-emerald-100 bg-white px-3 py-2">
-                              荷荷芭油：
-                              <span class="font-semibold">
-                                {{ formatNumber(line.jojobaOilGrams) }} g
-                              </span>
-                            </div>
-
-                            <div class="rounded-md border border-emerald-100 bg-white px-3 py-2">
-                              蜂蠟：
-                              <span class="font-semibold">
-                                {{ formatNumber(line.beeswaxGrams) }} g
-                              </span>
-                            </div>
-
-                            <div class="rounded-md border border-emerald-100 bg-white px-3 py-2">
-                              精油：
-                              <span class="font-semibold">
-                                {{ formatNumber(line.essentialOilMl) }} ml
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div class="pt-2 border-t border-emerald-200">
-                          容器準備：
-                          <span class="font-semibold">
-                            {{ formatNumber(settings.containerCount) }} 個
-                          </span>
-                        </div>
-                      </div>
-                    </div>
                   </template>
 
                   <div v-else class="grid gap-3 md:grid-cols-3">
@@ -416,6 +360,74 @@
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-emerald-200 bg-white shadow-sm">
+            <div class="border-b border-emerald-100 px-6 py-4">
+              <h2 class="text-base font-semibold tracking-tight text-emerald-900">
+                製作準備（實際操作）
+              </h2>
+              <p class="mt-1 text-sm text-emerald-700/80">
+                依三條產線分別顯示實際要準備的基底原料與精油用量。
+              </p>
+            </div>
+
+            <div class="p-6 text-sm text-emerald-900">
+              <div class="space-y-4">
+                <div
+                  v-for="line in productionPreparationDetails"
+                  :key="line.key"
+                  class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4"
+                >
+                  <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div class="font-semibold">
+                      {{ line.label }}
+                    </div>
+                    <div class="text-sm text-emerald-800">
+                      精油 {{ formatNumber(line.essentialOilMl) }} ml
+                      ・約 {{ formatNumber(line.containers) }} 罐
+                    </div>
+                  </div>
+
+                  <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-lg border border-emerald-100 bg-white px-3 py-3">
+                      <div class="text-xs text-emerald-700">乳油木果油</div>
+                      <div class="mt-1 text-base font-semibold">
+                        {{ formatNumber(line.sheaButterGrams) }} g
+                      </div>
+                    </div>
+
+                    <div class="rounded-lg border border-emerald-100 bg-white px-3 py-3">
+                      <div class="text-xs text-emerald-700">荷荷芭油</div>
+                      <div class="mt-1 text-base font-semibold">
+                        {{ formatNumber(line.jojobaOilGrams) }} g
+                      </div>
+                    </div>
+
+                    <div class="rounded-lg border border-emerald-100 bg-white px-3 py-3">
+                      <div class="text-xs text-emerald-700">蜂蠟</div>
+                      <div class="mt-1 text-base font-semibold">
+                        {{ formatNumber(line.beeswaxGrams) }} g
+                      </div>
+                    </div>
+
+                    <div class="rounded-lg border border-emerald-100 bg-white px-3 py-3">
+                      <div class="text-xs text-emerald-700">精油</div>
+                      <div class="mt-1 text-base font-semibold">
+                        {{ formatNumber(line.essentialOilMl) }} ml
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-lg border border-dashed border-emerald-200 bg-emerald-50/40 px-4 py-3">
+                  <span class="text-emerald-700">容器準備：</span>
+                  <span class="font-semibold text-emerald-900">
+                    {{ formatNumber(settings.containerCount) }} 個
+                  </span>
                 </div>
               </div>
             </div>
@@ -643,10 +655,10 @@ const defaultState = {
     containerUnitCost: 5,
   },
   ratios: {
-    sheaButter: 62,
-    jojobaOil: 5,
-    beeswax: 28,
-    essentialOil: 5,
+    sheaButter: 57,
+    jojobaOil: 18,
+    beeswax: 22,
+    essentialOil: 3,
   },
   packOptions: {
     sheaButter: [
@@ -1107,7 +1119,6 @@ const oilPreparation = computed(() => {
   }
 })
 
-/* 修改區塊：新增各產線製作準備明細 */
 const productionPreparationDetails = computed(() => {
   const gramsPerContainer = Number(settings.gramsPerContainer || 0)
 
