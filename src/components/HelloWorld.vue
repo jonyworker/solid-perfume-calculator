@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-slate-100/60 p-6 text-slate-950">
     <div class="mx-auto max-w-7xl space-y-6">
       <div class="space-y-1">
-        <h1 class="text-3xl font-semibold tracking-tight">固態香水製作計算機</h1>
+        <h1 class="text-3xl font-semibold tracking-tight">香膏製作計算機</h1>
         <p class="text-sm text-slate-500">
           可設定材料價格、製作比例、容器數量與單罐克數，並依不可拆賣規則自動估算採購成本。
         </p>
@@ -23,7 +23,7 @@
 
             <div class="grid gap-4 p-6 md:grid-cols-3">
               <label class="rounded-lg border border-slate-200 bg-white p-4">
-                <span class="text-sm font-medium text-slate-600">容器數量</span>
+                <span class="text-sm font-medium text-slate-600">香膏容器數量</span>
                 <div class="mt-3 flex items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-slate-950/5">
                   <input
                     v-model.number="settings.containerCount"
@@ -36,7 +36,7 @@
               </label>
 
               <label class="rounded-lg border border-slate-200 bg-white p-4">
-                <span class="text-sm font-medium text-slate-600">每個容器內容物容量</span>
+                <span class="text-sm font-medium text-slate-600">每個容器內容物</span>
                 <div class="mt-3 flex items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-slate-950/5">
                   <input
                     v-model.number="settings.gramsPerContainer"
@@ -108,8 +108,11 @@
                 :key="material.key"
                 class="rounded-lg border border-slate-200 bg-white p-4"
               >
-                <div class="flex items-center justify-start gap-3">
+                <div class="flex items-center justify-between gap-3">
                   <span class="text-sm font-medium">{{ material.label }}</span>
+                  <span class="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium" :class="material.badgeClass">
+                    {{ formatNumber(ratios[material.key]) }}%
+                  </span>
                 </div>
                 <div class="mt-3 flex items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-slate-950/5">
                   <input
@@ -162,7 +165,12 @@
                   <div>
                     <h3 class="text-sm font-semibold">{{ material.label }}</h3>
                     <p class="mt-1 text-xs text-slate-500">
-                      {{ packOptions[material.key].length }} 個規格，{{ material.unitLabel }} 為採購單位
+                      <template v-if="material.key === 'essentialOil'">
+                        3 組精油設定，{{ totalEssentialOilPackCount }} 個採購規格
+                      </template>
+                      <template v-else>
+                        {{ packOptions[material.key].length }} 個規格，{{ material.unitLabel }} 為採購單位
+                      </template>
                     </p>
                   </div>
 
@@ -177,7 +185,204 @@
                 </button>
 
                 <div v-if="openMaterialSections[material.key]" class="border-t border-slate-100 p-4">
-                  <div class="grid gap-3 md:grid-cols-3">
+                  <template v-if="material.key === 'essentialOil'">
+                    <div class="space-y-3 rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-xs text-slate-600">
+                      <div>
+                        必買複方精油固定使用 1 瓶，系統會自動換算最多可做幾罐；剩餘罐數再由尤加利與薰衣草精油平分。
+                      </div>
+                      <div class="grid gap-2 md:grid-cols-3">
+                        <div class="rounded-md border border-slate-200 bg-white px-3 py-2">
+                          必買複方：{{ formatNumber(oilUsageSummary.specialCount) }} 罐
+                        </div>
+                        <div class="rounded-md border border-slate-200 bg-white px-3 py-2">
+                          尤加利：{{ formatNumber(oilUsageSummary.eucalyptusCount) }} 罐
+                        </div>
+                        <div class="rounded-md border border-slate-200 bg-white px-3 py-2">
+                          薰衣草：{{ formatNumber(oilUsageSummary.lavenderCount) }} 罐
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="space-y-4">
+                      <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                        <div class="mb-3">
+                          <h4 class="text-sm font-semibold text-slate-800">必買複方精油</h4>
+                          <p class="mt-1 text-xs text-slate-500">固定使用 1 瓶，可編輯容量與價格。</p>
+                        </div>
+                        <div class="grid gap-3 md:grid-cols-3">
+                          <div
+                            v-for="(pack, index) in packOptions.specialEssentialOil"
+                            :key="`special-essential-oil-${index}`"
+                            class="rounded-lg border border-slate-200 bg-white p-3"
+                          >
+                            <div class="space-y-2">
+                              <label class="block space-y-1">
+                                <span class="text-xs text-slate-500">規格 (ml)</span>
+                                <input
+                                  v-model.number="pack.size"
+                                  type="number"
+                                  min="0.1"
+                                  step="0.1"
+                                  class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-slate-300 focus:ring-2 focus:ring-slate-950/5"
+                                />
+                              </label>
+                              <label class="block space-y-1">
+                                <span class="text-xs text-slate-500">價格 (元)</span>
+                                <input
+                                  v-model.number="pack.price"
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-slate-300 focus:ring-2 focus:ring-slate-950/5"
+                                />
+                              </label>
+                              <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                                單位成本：NT$ {{ formatCurrency(unitPricePerMl(pack.price, pack.size)) }}/ml
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                        <div class="mb-3">
+                          <h4 class="text-sm font-semibold text-slate-800">尤加利精油</h4>
+                          <p class="mt-1 text-xs text-slate-500">剩餘罐數的一半會分配到這裡，可設定 10 / 30 / 50 / 100 ml 價格。</p>
+                        </div>
+                        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                          <div
+                            v-for="(pack, index) in packOptions.eucalyptusEssentialOil"
+                            :key="`eucalyptus-essential-oil-${index}`"
+                            class="rounded-lg border border-slate-200 bg-white p-3"
+                          >
+                            <div class="space-y-2">
+                              <label class="block space-y-1">
+                                <span class="text-xs text-slate-500">規格 (ml)</span>
+                                <input
+                                  v-model.number="pack.size"
+                                  type="number"
+                                  min="0.1"
+                                  step="0.1"
+                                  class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-slate-300 focus:ring-2 focus:ring-slate-950/5"
+                                />
+                              </label>
+                              <label class="block space-y-1">
+                                <span class="text-xs text-slate-500">價格 (元)</span>
+                                <input
+                                  v-model.number="pack.price"
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-slate-300 focus:ring-2 focus:ring-slate-950/5"
+                                />
+                              </label>
+                              <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                                單位成本：NT$ {{ formatCurrency(unitPricePerMl(pack.price, pack.size)) }}/ml
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                        <div class="mb-3">
+                          <h4 class="text-sm font-semibold text-slate-800">薰衣草精油</h4>
+                          <p class="mt-1 text-xs text-slate-500">剩餘罐數的另一半會分配到這裡，可設定 10 / 30 / 50 / 100 ml 價格。</p>
+                        </div>
+                        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                          <div
+                            v-for="(pack, index) in packOptions.lavenderEssentialOil"
+                            :key="`lavender-essential-oil-${index}`"
+                            class="rounded-lg border border-slate-200 bg-white p-3"
+                          >
+                            <div class="space-y-2">
+                              <label class="block space-y-1">
+                                <span class="text-xs text-slate-500">規格 (ml)</span>
+                                <input
+                                  v-model.number="pack.size"
+                                  type="number"
+                                  min="0.1"
+                                  step="0.1"
+                                  class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-slate-300 focus:ring-2 focus:ring-slate-950/5"
+                                />
+                              </label>
+                              <label class="block space-y-1">
+                                <span class="text-xs text-slate-500">價格 (元)</span>
+                                <input
+                                  v-model.number="pack.price"
+                                  type="number"
+                                  min="0"
+                                  step="0.1"
+                                  class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-slate-300 focus:ring-2 focus:ring-slate-950/5"
+                                />
+                              </label>
+                              <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                                單位成本：NT$ {{ formatCurrency(unitPricePerMl(pack.price, pack.size)) }}/ml
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 修改區塊：製作準備（實際操作） -->
+                    <div class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 text-xs text-emerald-800">
+                      <div class="mb-3 font-semibold">製作準備（實際操作）</div>
+
+                      <div class="space-y-3">
+                        <div
+                          v-for="line in productionPreparationDetails"
+                          :key="line.key"
+                          class="rounded-lg border border-emerald-200 bg-white/70 p-3"
+                        >
+                          <div class="font-medium text-emerald-900">
+                            {{ line.label }}：
+                            {{ formatNumber(line.essentialOilMl) }} ml
+                            （約 {{ formatNumber(line.containers) }} 罐）
+                          </div>
+
+                          <div class="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                            <div class="rounded-md border border-emerald-100 bg-white px-3 py-2">
+                              乳油木果油：
+                              <span class="font-semibold">
+                                {{ formatNumber(line.sheaButterGrams) }} g
+                              </span>
+                            </div>
+
+                            <div class="rounded-md border border-emerald-100 bg-white px-3 py-2">
+                              荷荷芭油：
+                              <span class="font-semibold">
+                                {{ formatNumber(line.jojobaOilGrams) }} g
+                              </span>
+                            </div>
+
+                            <div class="rounded-md border border-emerald-100 bg-white px-3 py-2">
+                              蜂蠟：
+                              <span class="font-semibold">
+                                {{ formatNumber(line.beeswaxGrams) }} g
+                              </span>
+                            </div>
+
+                            <div class="rounded-md border border-emerald-100 bg-white px-3 py-2">
+                              精油：
+                              <span class="font-semibold">
+                                {{ formatNumber(line.essentialOilMl) }} ml
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-emerald-200">
+                          容器準備：
+                          <span class="font-semibold">
+                            {{ formatNumber(settings.containerCount) }} 個
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <div v-else class="grid gap-3 md:grid-cols-3">
                     <div
                       v-for="(pack, index) in packOptions[material.key]"
                       :key="`${material.key}-${index}`"
@@ -205,6 +410,9 @@
                             class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-slate-300 focus:ring-2 focus:ring-slate-950/5"
                           />
                         </label>
+                        <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                          單位成本：NT$ {{ formatCurrency(unitPricePerMl(pack.price, pack.size)) }}/ml
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -219,6 +427,17 @@
             <div class="p-6">
               <div class="text-sm text-slate-400">單罐成本</div>
               <div class="mt-3 text-4xl font-semibold tracking-tight">NT$ {{ formatCurrency(costPerContainer) }}</div>
+              <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <div class="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                  <div class="text-xs text-slate-400">總成本</div>
+                  <div class="mt-1 text-lg font-semibold">NT$ {{ formatCurrency(grandTotalCost) }}</div>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+                  <div class="text-xs text-slate-400">總產量</div>
+                  <div class="mt-1 text-lg font-semibold">{{ formatNumber(totalWeight) }} g</div>
+                </div>
+              </div>
+
               <div class="mt-4 rounded-lg border border-white/10 bg-white/5">
                 <button
                   type="button"
@@ -270,18 +489,6 @@
                   </div>
                 </div>
               </div>
-              <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                <div class="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
-                  <div class="text-xs text-slate-400">總成本</div>
-                  <div class="mt-1 text-lg font-semibold">NT$ {{ formatCurrency(grandTotalCost) }}</div>
-                </div>
-                <div class="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
-                  <div class="text-xs text-slate-400">總產量</div>
-                  <div class="mt-1 text-lg font-semibold">{{ formatNumber(totalWeight) }} g</div>
-                </div>
-              </div>
-
-
             </div>
           </div>
 
@@ -393,6 +600,10 @@
                       {{ formatNumber(item.leftoverAmount) }} {{ item.unitLabel }}
                     </span>
                   </div>
+                  <div class="flex items-center justify-between text-xs text-slate-500">
+                    <span>剩料約值</span>
+                    <span>NT$ {{ formatCurrency(item.leftoverValue) }}</span>
+                  </div>
                 </div>
 
                 <div class="mt-3">
@@ -453,8 +664,20 @@ const defaultState = {
       { size: 500, price: 214 },
       { size: 1000, price: 380 },
     ],
-    essentialOil: [
+    specialEssentialOil: [
       { size: 15, price: 1280 },
+    ],
+    eucalyptusEssentialOil: [
+      { size: 10, price: 120 },
+      { size: 30, price: 160 },
+      { size: 50, price: 240 },
+      { size: 100, price: 410 },
+    ],
+    lavenderEssentialOil: [
+      { size: 10, price: 130 },
+      { size: 30, price: 190 },
+      { size: 50, price: 280 },
+      { size: 100, price: 510 },
     ],
   },
 }
@@ -508,6 +731,14 @@ const materials = [
 
 const totalPackOptionCount = computed(() => {
   return Object.values(packOptions).reduce((sum, packs) => sum + packs.length, 0)
+})
+
+const totalEssentialOilPackCount = computed(() => {
+  return (
+    (packOptions.specialEssentialOil?.length || 0) +
+    (packOptions.eucalyptusEssentialOil?.length || 0) +
+    (packOptions.lavenderEssentialOil?.length || 0)
+  )
 })
 
 const ratioTotal = computed(() => {
@@ -657,44 +888,138 @@ function findBestCombination(requiredAmount, options) {
   }
 }
 
+const specialEssentialOilBottleMl = computed(() => {
+  return Number(packOptions.specialEssentialOil?.[0]?.size || 15)
+})
+
+const essentialOilDensity = computed(() => {
+  return materials.find((item) => item.key === 'essentialOil')?.density || 0.9
+})
+
+const essentialOilPerContainerMl = computed(() => {
+  const ratio = Number(ratios.essentialOil || 0) / 100
+  const gramsPerContainer = Number(settings.gramsPerContainer || 0)
+  const perContainerGrams = gramsPerContainer * ratio
+  return essentialOilDensity.value > 0 ? perContainerGrams / essentialOilDensity.value : 0
+})
+
+const maxSpecialEssentialOilContainers = computed(() => {
+  const perContainerMl = essentialOilPerContainerMl.value
+  if (perContainerMl <= 0) return 0
+  return Math.floor(specialEssentialOilBottleMl.value / perContainerMl)
+})
+
 const materialResults = computed(() => {
-  const rows = materials.map((material) => {
+  const rows = []
+
+  materials.forEach((material) => {
     const ratio = Number(ratios[material.key] || 0) / 100
-    const requiredGrams = totalWeight.value * ratio
+    const totalRequiredGrams = totalWeight.value * ratio
+
+    if (material.key === 'essentialOil') {
+      const perContainerMl = essentialOilPerContainerMl.value
+
+      const maxSpecialCount = Math.min(
+        Number(settings.containerCount || 0),
+        maxSpecialEssentialOilContainers.value,
+      )
+
+      const totalCount = Number(settings.containerCount || 0)
+      const remainingCount = Math.max(0, totalCount - maxSpecialCount)
+
+      const specialRequiredMl = maxSpecialCount * perContainerMl
+      const remainingRequiredMl = remainingCount * perContainerMl
+
+      const eachStandardMl = remainingRequiredMl / 2
+
+      const specialOptions = normalizePackOptions(packOptions.specialEssentialOil)
+      const eucalyptusOptions = normalizePackOptions(packOptions.eucalyptusEssentialOil)
+      const lavenderOptions = normalizePackOptions(packOptions.lavenderEssentialOil)
+
+      const specialPurchase = ratioError.value
+        ? { totalAmount: 0, totalCost: 0, combination: [] }
+        : findBestCombination(specialRequiredMl, specialOptions)
+      const eucalyptusPurchase = ratioError.value
+        ? { totalAmount: 0, totalCost: 0, combination: [] }
+        : findBestCombination(eachStandardMl, eucalyptusOptions)
+      const lavenderPurchase = ratioError.value
+        ? { totalAmount: 0, totalCost: 0, combination: [] }
+        : findBestCombination(eachStandardMl, lavenderOptions)
+
+      rows.push({
+        key: 'essentialOil-special',
+        label: '必買複方精油',
+        unitLabel: 'ml',
+        barClass: 'bg-slate-400',
+        requiredAmount: specialRequiredMl,
+        formula: `${formatNumber(specialEssentialOilBottleMl.value)}ml ÷ ${formatNumber(perContainerMl)}ml/罐 = 最多 ${maxSpecialCount}罐`,
+        purchasedAmount: specialPurchase.totalAmount,
+        purchaseCost: specialPurchase.totalCost,
+        leftoverAmount: Math.max(0, specialPurchase.totalAmount - specialRequiredMl),
+        leftoverWarning: specialPurchase.totalAmount - specialRequiredMl > perContainerMl * 0.1,
+        combination: specialPurchase.combination,
+      })
+
+      rows.push({
+        key: 'essentialOil-eucalyptus',
+        label: '尤加利精油',
+        unitLabel: 'ml',
+        barClass: 'bg-slate-600',
+        requiredAmount: eachStandardMl,
+        formula: `剩餘 ${remainingCount}罐 × ${formatNumber(perContainerMl)}ml ÷ 2`,
+        purchasedAmount: eucalyptusPurchase.totalAmount,
+        purchaseCost: eucalyptusPurchase.totalCost,
+        leftoverAmount: Math.max(0, eucalyptusPurchase.totalAmount - eachStandardMl),
+        leftoverWarning: false,
+        combination: eucalyptusPurchase.combination,
+      })
+
+      rows.push({
+        key: 'essentialOil-lavender',
+        label: '薰衣草精油',
+        unitLabel: 'ml',
+        barClass: 'bg-slate-500',
+        requiredAmount: eachStandardMl,
+        formula: `剩餘 ${remainingCount}罐 × ${formatNumber(perContainerMl)}ml ÷ 2`,
+        purchasedAmount: lavenderPurchase.totalAmount,
+        purchaseCost: lavenderPurchase.totalCost,
+        leftoverAmount: Math.max(0, lavenderPurchase.totalAmount - eachStandardMl),
+        leftoverWarning: false,
+        combination: lavenderPurchase.combination,
+      })
+
+      return
+    }
+
     const requiredAmount = material.unitLabel === 'ml'
-      ? requiredGrams / material.density
-      : requiredGrams
+      ? totalRequiredGrams / material.density
+      : totalRequiredGrams
 
     const options = normalizePackOptions(packOptions[material.key])
     const purchase = ratioError.value
       ? { totalAmount: 0, totalCost: 0, combination: [] }
       : findBestCombination(requiredAmount, options)
 
-    const ratioPercent = ratio * 100
-    const baseFormula = `${formatNumber(totalWeight.value)}g × ${formatNumber(ratioPercent)}%`
-    const formula = material.unitLabel === 'ml'
-      ? `${baseFormula} → ${formatNumber(requiredGrams)}g ÷ ${material.density}`
-      : baseFormula
-
-    return {
+    rows.push({
       key: material.key,
       label: material.label,
       unitLabel: material.unitLabel,
       barClass: material.barClass,
       requiredAmount,
-      formula,
+      formula: `${formatNumber(totalWeight.value)}g × ${formatNumber(ratio * 100)}%`,
       purchasedAmount: purchase.totalAmount,
       purchaseCost: purchase.totalCost,
       leftoverAmount: Math.max(0, purchase.totalAmount - requiredAmount),
       leftoverWarning: purchase.totalAmount - requiredAmount > requiredAmount * 0.1,
       combination: purchase.combination,
-    }
+    })
   })
 
   const highestCost = rows.reduce((max, item) => Math.max(max, item.purchaseCost), 0)
 
   return rows.map((item) => ({
     ...item,
+    leftoverValue: calculateLeftoverValue(item),
     isHighestCost: highestCost > 0 && item.purchaseCost === highestCost,
   }))
 })
@@ -729,11 +1054,21 @@ const unitCostBreakdown = computed(() => {
     }))
   }
 
-  return materialResults.value.map((item) => ({
-    ...item,
-    requiredAmountPerContainer: item.requiredAmount / count,
-    costPerContainer: item.purchaseCost / count,
-  }))
+  return materialResults.value.map((item) => {
+    if (item.key.includes('essentialOil')) {
+      return {
+        ...item,
+        requiredAmountPerContainer: essentialOilPerContainerMl.value,
+        costPerContainer: item.purchaseCost / count,
+      }
+    }
+
+    return {
+      ...item,
+      requiredAmountPerContainer: item.requiredAmount / count,
+      costPerContainer: item.purchaseCost / count,
+    }
+  })
 })
 
 const unitMaterialCostPerContainer = computed(() => {
@@ -741,6 +1076,89 @@ const unitMaterialCostPerContainer = computed(() => {
   if (count <= 0) return 0
   return totalMaterialCost.value / count
 })
+
+const oilUsageSummary = computed(() => {
+  const totalCount = Number(settings.containerCount || 0)
+  const specialCount = Math.min(totalCount, maxSpecialEssentialOilContainers.value)
+  const remainingCount = Math.max(0, totalCount - specialCount)
+  return {
+    specialCount,
+    remainingCount,
+    eucalyptusCount: remainingCount / 2,
+    lavenderCount: remainingCount / 2,
+  }
+})
+
+const oilPreparation = computed(() => {
+  const perContainerMl = essentialOilPerContainerMl.value
+
+  const specialCount = oilUsageSummary.value.specialCount
+  const eucalyptusCount = oilUsageSummary.value.eucalyptusCount
+  const lavenderCount = oilUsageSummary.value.lavenderCount
+
+  return {
+    specialMl: specialCount * perContainerMl,
+    eucalyptusMl: eucalyptusCount * perContainerMl,
+    lavenderMl: lavenderCount * perContainerMl,
+
+    specialContainers: specialCount,
+    eucalyptusContainers: eucalyptusCount,
+    lavenderContainers: lavenderCount,
+  }
+})
+
+/* 修改區塊：新增各產線製作準備明細 */
+const productionPreparationDetails = computed(() => {
+  const gramsPerContainer = Number(settings.gramsPerContainer || 0)
+
+  const sheaRatio = Number(ratios.sheaButter || 0) / 100
+  const jojobaRatio = Number(ratios.jojobaOil || 0) / 100
+  const beeswaxRatio = Number(ratios.beeswax || 0) / 100
+
+  const lines = [
+    {
+      key: 'special',
+      label: '必買複方精油',
+      containers: oilPreparation.value.specialContainers,
+      essentialOilMl: oilPreparation.value.specialMl,
+    },
+    {
+      key: 'eucalyptus',
+      label: '尤加利精油',
+      containers: oilPreparation.value.eucalyptusContainers,
+      essentialOilMl: oilPreparation.value.eucalyptusMl,
+    },
+    {
+      key: 'lavender',
+      label: '薰衣草精油',
+      containers: oilPreparation.value.lavenderContainers,
+      essentialOilMl: oilPreparation.value.lavenderMl,
+    },
+  ]
+
+  return lines.map((line) => {
+    const totalBaseWeight = line.containers * gramsPerContainer
+
+    return {
+      ...line,
+      sheaButterGrams: totalBaseWeight * sheaRatio,
+      jojobaOilGrams: totalBaseWeight * jojobaRatio,
+      beeswaxGrams: totalBaseWeight * beeswaxRatio,
+    }
+  })
+})
+
+function calculateLeftoverValue(item) {
+  if (item.purchasedAmount <= 0 || item.purchaseCost <= 0 || item.leftoverAmount <= 0) return 0
+  return (item.purchaseCost / item.purchasedAmount) * item.leftoverAmount
+}
+
+function unitPricePerMl(price, size) {
+  const normalizedPrice = Number(price || 0)
+  const normalizedSize = Number(size || 0)
+  if (normalizedPrice <= 0 || normalizedSize <= 0) return 0
+  return normalizedPrice / normalizedSize
+}
 
 function toggleMaterialSection(key) {
   openMaterialSections[key] = !openMaterialSections[key]
