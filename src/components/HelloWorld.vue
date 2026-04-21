@@ -2,9 +2,9 @@
   <div class="min-h-screen bg-slate-100/60 p-6 text-slate-950">
     <div class="mx-auto max-w-7xl space-y-6">
       <div class="space-y-1">
-        <h1 class="text-3xl font-semibold tracking-tight">香膏製作計算機</h1>
+        <h1 class="text-3xl font-semibold tracking-tight">體香膏製作計算機</h1>
         <p class="text-sm text-slate-500">
-          可設定材料價格、製作比例、容器數量與單罐克數，並依不可拆賣規則自動估算採購成本。
+          可設定三條產線配方、材料價格、容器數量與單罐克數，並依不可拆賣規則自動估算採購成本。
         </p>
       </div>
 
@@ -67,64 +67,90 @@
 
           <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
             <div class="border-b border-slate-100 px-6 py-4">
-              <div class="flex items-center justify-between gap-4">
-                <h2 class="text-base font-semibold tracking-tight">製作比例 (%)</h2>
-                <div class="text-sm text-slate-500">
-                  比例總和：
-                  <span class="font-semibold" :class="ratioTotal === 100 ? 'text-emerald-600' : 'text-rose-600'">
-                    {{ formatNumber(ratioTotal) }}%
-                  </span>
-                </div>
-              </div>
-
-              <div
-                v-if="ratioError"
-                class="mt-4 rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-700"
-              >
-                {{ ratioError }}
-              </div>
-
-              <div class="mt-4 overflow-hidden rounded-full bg-slate-100">
-                <div class="flex h-2.5 w-full">
-                  <div
-                    v-for="segment in ratioSegments"
-                    :key="segment.key"
-                    class="h-full transition-all"
-                    :class="segment.barClass"
-                    :style="{ width: `${segment.width}%` }"
-                  ></div>
-                  <div
-                    v-if="ratioGap > 0"
-                    class="h-full bg-rose-300/70"
-                    :style="{ width: `${ratioGap}%` }"
-                  ></div>
-                </div>
-              </div>
+              <h2 class="text-base font-semibold tracking-tight">製作比例 (%)</h2>
+              <p class="mt-1 text-sm text-slate-500">
+                三條產線可各自設定不同配方比例，系統會分別驗證是否為 100%。
+              </p>
             </div>
 
-            <div class="grid gap-4 p-6 md:grid-cols-2">
-              <label
-                v-for="material in materials"
-                :key="material.key"
-                class="rounded-lg border border-slate-200 bg-white p-4"
+            <div class="space-y-4 p-6">
+              <div
+                v-for="line in productionLines"
+                :key="line.key"
+                class="rounded-xl border border-slate-200 bg-slate-50/50 p-4"
               >
-                <div class="flex items-center justify-between gap-3">
-                  <span class="text-sm font-medium">{{ material.label }}</span>
-                  <span class="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium" :class="material.badgeClass">
-                    {{ formatNumber(ratios[material.key]) }}%
-                  </span>
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 class="text-sm font-semibold text-slate-900">{{ line.label }}</h3>
+                    <p class="mt-1 text-xs text-slate-500">
+                      這條產線的基底與精油比例會獨立影響備料、成本與採購結果。
+                    </p>
+                  </div>
+
+                  <div class="text-sm text-slate-500">
+                    比例總和：
+                    <span
+                      class="font-semibold"
+                      :class="getLineRatioTotal(line.key) === 100 ? 'text-emerald-600' : 'text-rose-600'"
+                    >
+                      {{ formatNumber(getLineRatioTotal(line.key)) }}%
+                    </span>
+                  </div>
                 </div>
-                <div class="mt-3 flex items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-slate-950/5">
-                  <input
-                    v-model.number="ratios[material.key]"
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    class="w-full bg-transparent text-xl font-semibold outline-none"
-                  />
-                  <span class="text-sm font-medium text-slate-500">%</span>
+
+                <div
+                  v-if="getLineRatioError(line.key)"
+                  class="mt-4 rounded-lg border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-700"
+                >
+                  {{ getLineRatioError(line.key) }}
                 </div>
-              </label>
+
+                <div class="mt-4 overflow-hidden rounded-full bg-slate-100">
+                  <div class="flex h-2.5 w-full">
+                    <div
+                      v-for="segment in getLineRatioSegments(line.key)"
+                      :key="`${line.key}-${segment.key}`"
+                      class="h-full transition-all"
+                      :class="segment.barClass"
+                      :style="{ width: `${segment.width}%` }"
+                    ></div>
+                    <div
+                      v-if="getLineRatioGap(line.key) > 0"
+                      class="h-full bg-rose-300/70"
+                      :style="{ width: `${getLineRatioGap(line.key)}%` }"
+                    ></div>
+                  </div>
+                </div>
+
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                  <label
+                    v-for="material in materials"
+                    :key="`${line.key}-${material.key}`"
+                    class="rounded-lg border border-slate-200 bg-white p-4"
+                  >
+                    <div class="flex items-center justify-between gap-3">
+                      <span class="text-sm font-medium">{{ material.label }}</span>
+                      <span
+                        class="inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium"
+                        :class="material.badgeClass"
+                      >
+                        {{ formatNumber(ratiosByLine[line.key][material.key]) }}%
+                      </span>
+                    </div>
+
+                    <div class="mt-3 flex items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-slate-300 focus-within:ring-2 focus-within:ring-slate-950/5">
+                      <input
+                        v-model.number="ratiosByLine[line.key][material.key]"
+                        type="number"
+                        min="0"
+                        step="1"
+                        class="w-full bg-transparent text-xl font-semibold outline-none"
+                      />
+                      <span class="text-sm font-medium text-slate-500">%</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -186,23 +212,6 @@
 
                 <div v-if="openMaterialSections[material.key]" class="border-t border-slate-100 p-4">
                   <template v-if="material.key === 'essentialOil'">
-                    <div class="space-y-3 rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3 text-xs text-slate-600">
-                      <div>
-                        必買複方精油固定使用 1 瓶，系統會自動換算最多可做幾罐；剩餘罐數再由尤加利與薰衣草精油平分。
-                      </div>
-                      <div class="grid gap-2 md:grid-cols-3">
-                        <div class="rounded-md border border-slate-200 bg-white px-3 py-2">
-                          必買複方：{{ formatNumber(oilUsageSummary.specialCount) }} 罐
-                        </div>
-                        <div class="rounded-md border border-slate-200 bg-white px-3 py-2">
-                          尤加利：{{ formatNumber(oilUsageSummary.eucalyptusCount) }} 罐
-                        </div>
-                        <div class="rounded-md border border-slate-200 bg-white px-3 py-2">
-                          薰衣草：{{ formatNumber(oilUsageSummary.lavenderCount) }} 罐
-                        </div>
-                      </div>
-                    </div>
-
                     <div class="space-y-4">
                       <div class="rounded-lg border border-slate-200 bg-slate-50/50 p-4">
                         <div class="mb-3">
@@ -354,8 +363,9 @@
                             class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-slate-300 focus:ring-2 focus:ring-slate-950/5"
                           />
                         </label>
+
                         <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                          單位成本：NT$ {{ formatCurrency(unitPricePerMl(pack.price, pack.size)) }}/ml
+                          單位成本：NT$ {{ formatCurrency(unitPricePerMl(pack.price, pack.size)) }}/{{ material.unitLabel }}
                         </div>
                       </div>
                     </div>
@@ -371,12 +381,42 @@
                 製作準備（實際操作）
               </h2>
               <p class="mt-1 text-sm text-emerald-700/80">
-                依三條產線分別顯示實際要準備的基底原料與精油用量。
+                依三條產線各自的配方比例，顯示實際要準備的基底原料與精油用量。
               </p>
             </div>
 
             <div class="p-6 text-sm text-emerald-900">
               <div class="space-y-4">
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+                  <div class="text-sm font-semibold text-emerald-900">產線分配總覽</div>
+                  <div class="mt-1 text-xs text-emerald-700">
+                    必買複方精油固定使用 1 瓶，剩餘罐數由尤加利與薰衣草平分。
+                  </div>
+
+                  <div class="mt-3 grid gap-3 md:grid-cols-3">
+                    <div class="rounded-lg border border-emerald-100 bg-white px-3 py-3">
+                      <div class="text-xs text-emerald-700">🧪 必買複方</div>
+                      <div class="mt-1 text-base font-semibold">
+                        {{ formatNumber(oilUsageSummary.specialCount) }} 罐
+                      </div>
+                    </div>
+
+                    <div class="rounded-lg border border-emerald-100 bg-white px-3 py-3">
+                      <div class="text-xs text-emerald-700">🌿 尤加利</div>
+                      <div class="mt-1 text-base font-semibold">
+                        {{ formatNumber(oilUsageSummary.eucalyptusCount) }} 罐
+                      </div>
+                    </div>
+
+                    <div class="rounded-lg border border-emerald-100 bg-white px-3 py-3">
+                      <div class="text-xs text-emerald-700">🌸 薰衣草</div>
+                      <div class="mt-1 text-base font-semibold">
+                        {{ formatNumber(oilUsageSummary.lavenderCount) }} 罐
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div
                   v-for="line in productionPreparationDetails"
                   :key="line.key"
@@ -417,7 +457,7 @@
                     <div class="rounded-lg border border-emerald-100 bg-white px-3 py-3">
                       <div class="text-xs text-emerald-700">精油</div>
                       <div class="mt-1 text-base font-semibold">
-                        {{ formatNumber(line.essentialOilMl) }} ml
+                        {{ formatNumber(line.essentialOilMl) }} ml <span class="text-xs text-slate-500"> ≈ {{ formatNumber(mlToGram(line.essentialOilMl)) }} g</span>
                       </div>
                     </div>
                   </div>
@@ -437,8 +477,9 @@
         <aside class="space-y-6 xl:sticky xl:top-6 self-start">
           <div class="rounded-xl border border-slate-200 bg-slate-950 text-white shadow-sm">
             <div class="p-6">
-              <div class="text-sm text-slate-400">單罐成本</div>
+              <div class="text-sm text-slate-400">平均單罐成本</div>
               <div class="mt-3 text-4xl font-semibold tracking-tight">NT$ {{ formatCurrency(costPerContainer) }}</div>
+
               <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <div class="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
                   <div class="text-xs text-slate-400">總成本</div>
@@ -514,6 +555,7 @@
                 <span class="text-slate-600">容器成本</span>
                 <span class="font-semibold">NT$ {{ formatCurrency(containerCost) }}</span>
               </div>
+
               <div>
                 <div class="flex items-center justify-between">
                   <span class="text-slate-600">原料成本</span>
@@ -567,18 +609,21 @@
                   <div>
                     <div class="flex items-center gap-2">
                       <h3 class="text-sm font-semibold">{{ item.label }}</h3>
+
                       <span
                         v-if="item.isHighestCost"
                         class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
                       >
                         成本最高
                       </span>
+
                       <span
                         v-else-if="item.leftoverWarning"
                         class="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700"
                       >
                         剩餘偏高
                       </span>
+
                       <span
                         v-else-if="item.unitLabel === 'ml'"
                         class="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700"
@@ -586,6 +631,7 @@
                         已換算
                       </span>
                     </div>
+
                     <p class="mt-1 text-xs text-slate-500">
                       需求：{{ formatNumber(item.requiredAmount) }} {{ item.unitLabel }}
                       <span class="ml-1 text-[11px] text-slate-400">
@@ -593,6 +639,7 @@
                       </span>
                     </p>
                   </div>
+
                   <div class="text-right">
                     <div class="text-sm text-slate-500">採購成本</div>
                     <div class="font-semibold">NT$ {{ formatCurrency(item.purchaseCost) }}</div>
@@ -606,12 +653,14 @@
                       {{ formatNumber(item.purchasedAmount) }} {{ item.unitLabel }}
                     </span>
                   </div>
+
                   <div class="flex items-center justify-between">
                     <span class="text-slate-600">剩餘</span>
                     <span class="font-medium" :class="item.leftoverWarning ? 'text-amber-700' : ''">
                       {{ formatNumber(item.leftoverAmount) }} {{ item.unitLabel }}
                     </span>
                   </div>
+
                   <div class="flex items-center justify-between text-xs text-slate-500">
                     <span>剩料約值</span>
                     <span>NT$ {{ formatCurrency(item.leftoverValue) }}</span>
@@ -628,6 +677,7 @@
                     >
                       {{ combo.count }} × {{ combo.size }}{{ item.unitLabel }}
                     </span>
+
                     <span
                       v-if="item.combination.length === 0"
                       class="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700"
@@ -654,11 +704,25 @@ const defaultState = {
     gramsPerContainer: 15,
     containerUnitCost: 5,
   },
-  ratios: {
-    sheaButter: 57,
-    jojobaOil: 18,
-    beeswax: 22,
-    essentialOil: 3,
+  ratiosByLine: {
+    special: {
+      sheaButter: 56,
+      jojobaOil: 17,
+      beeswax: 22,
+      essentialOil: 5,
+    },
+    eucalyptus: {
+      sheaButter: 57,
+      jojobaOil: 18,
+      beeswax: 22,
+      essentialOil: 3,
+    },
+    lavender: {
+      sheaButter: 56,
+      jojobaOil: 18,
+      beeswax: 22,
+      essentialOil: 4,
+    },
   },
   packOptions: {
     sheaButter: [
@@ -695,10 +759,12 @@ const defaultState = {
 }
 
 const settings = reactive(structuredClone(defaultState.settings))
-const ratios = reactive(structuredClone(defaultState.ratios))
+const ratiosByLine = reactive(structuredClone(defaultState.ratiosByLine))
 const packOptions = reactive(structuredClone(defaultState.packOptions))
+
 const isPriceSettingsOpen = ref(false)
 const isUnitCostBreakdownOpen = ref(false)
+
 const openMaterialSections = reactive({
   sheaButter: true,
   jojobaOil: false,
@@ -741,6 +807,24 @@ const materials = [
   },
 ]
 
+const productionLines = [
+  { key: 'special', label: '🧪 必買複方配方' },
+  { key: 'eucalyptus', label: '🌿 尤加利配方' },
+  { key: 'lavender', label: '🌸 薰衣草配方' },
+]
+
+const lineDisplayMap = {
+  special: '🧪 必買複方精油',
+  eucalyptus: '🌿 尤加利精油',
+  lavender: '🌸 薰衣草精油',
+}
+
+const lineOilPackMap = {
+  special: 'specialEssentialOil',
+  eucalyptus: 'eucalyptusEssentialOil',
+  lavender: 'lavenderEssentialOil',
+}
+
 const totalPackOptionCount = computed(() => {
   return Object.values(packOptions).reduce((sum, packs) => sum + packs.length, 0)
 })
@@ -753,36 +837,111 @@ const totalEssentialOilPackCount = computed(() => {
   )
 })
 
-const ratioTotal = computed(() => {
-  return Object.values(ratios).reduce((sum, value) => sum + Number(value || 0), 0)
+const totalWeight = computed(() => {
+  return Number(settings.containerCount || 0) * Number(settings.gramsPerContainer || 0)
 })
 
-const ratioGap = computed(() => {
-  return Math.max(0, 100 - Math.min(ratioTotal.value, 100))
+const essentialOilDensity = computed(() => {
+  return materials.find((item) => item.key === 'essentialOil')?.density || 0.9
 })
 
-const ratioSegments = computed(() => {
+const specialEssentialOilBottleMl = computed(() => {
+  return Number(packOptions.specialEssentialOil?.[0]?.size || 15)
+})
+
+function getLineRatioTotal(lineKey) {
+  return Object.values(ratiosByLine[lineKey]).reduce((sum, value) => sum + Number(value || 0), 0)
+}
+
+function getLineRatioGap(lineKey) {
+  return Math.max(0, 100 - Math.min(getLineRatioTotal(lineKey), 100))
+}
+
+function getLineRatioSegments(lineKey) {
   return materials.map((material) => ({
     key: material.key,
-    width: Math.max(0, Math.min(Number(ratios[material.key] || 0), 100)),
+    width: Math.max(0, Math.min(Number(ratiosByLine[lineKey][material.key] || 0), 100)),
     barClass: material.barClass,
   }))
-})
+}
 
-const ratioError = computed(() => {
-  if (ratioTotal.value > 100) {
-    return `比例總和不可超過 100%，目前為 ${formatNumber(ratioTotal.value)}%。`
+function getLineRatioError(lineKey) {
+  const total = getLineRatioTotal(lineKey)
+
+  if (total > 100) {
+    return `${lineDisplayMap[lineKey]}比例總和不可超過 100%，目前為 ${formatNumber(total)}%。`
   }
 
-  if (ratioTotal.value < 100) {
-    return `比例總和必須等於 100%，目前為 ${formatNumber(ratioTotal.value)}%。`
+  if (total < 100) {
+    return `${lineDisplayMap[lineKey]}比例總和必須等於 100%，目前為 ${formatNumber(total)}%。`
   }
 
   return ''
+}
+
+const hasAnyRatioError = computed(() => {
+  return productionLines.some((line) => Boolean(getLineRatioError(line.key)))
 })
 
-const totalWeight = computed(() => {
-  return Number(settings.containerCount || 0) * Number(settings.gramsPerContainer || 0)
+function getLineEssentialOilRatio(lineKey) {
+  return Number(ratiosByLine[lineKey].essentialOil || 0) / 100
+}
+
+function getLineEssentialOilPerContainerMl(lineKey) {
+  const gramsPerContainer = Number(settings.gramsPerContainer || 0)
+  const essentialRatio = getLineEssentialOilRatio(lineKey)
+  const perContainerGrams = gramsPerContainer * essentialRatio
+  return essentialOilDensity.value > 0 ? perContainerGrams / essentialOilDensity.value : 0
+}
+
+const maxSpecialEssentialOilContainers = computed(() => {
+  const perContainerMl = getLineEssentialOilPerContainerMl('special')
+  if (perContainerMl <= 0) return 0
+  return Math.floor(specialEssentialOilBottleMl.value / perContainerMl)
+})
+
+const oilUsageSummary = computed(() => {
+  const totalCount = Number(settings.containerCount || 0)
+  const specialCount = Math.min(totalCount, maxSpecialEssentialOilContainers.value)
+  const remainingCount = Math.max(0, totalCount - specialCount)
+
+  return {
+    specialCount,
+    remainingCount,
+    eucalyptusCount: remainingCount / 2,
+    lavenderCount: remainingCount / 2,
+  }
+})
+
+const productionPreparationDetails = computed(() => {
+  const gramsPerContainer = Number(settings.gramsPerContainer || 0)
+
+  const lineCounts = {
+    special: oilUsageSummary.value.specialCount,
+    eucalyptus: oilUsageSummary.value.eucalyptusCount,
+    lavender: oilUsageSummary.value.lavenderCount,
+  }
+
+  return productionLines.map((line) => {
+    const containers = lineCounts[line.key]
+    const totalLineWeight = containers * gramsPerContainer
+
+    const sheaRatio = Number(ratiosByLine[line.key].sheaButter || 0) / 100
+    const jojobaRatio = Number(ratiosByLine[line.key].jojobaOil || 0) / 100
+    const beeswaxRatio = Number(ratiosByLine[line.key].beeswax || 0) / 100
+
+    const essentialOilMl = containers * getLineEssentialOilPerContainerMl(line.key)
+
+    return {
+      key: line.key,
+      label: lineDisplayMap[line.key],
+      containers,
+      essentialOilMl,
+      sheaButterGrams: totalLineWeight * sheaRatio,
+      jojobaOilGrams: totalLineWeight * jojobaRatio,
+      beeswaxGrams: totalLineWeight * beeswaxRatio,
+    }
+  })
 })
 
 function normalizePackOptions(options) {
@@ -900,115 +1059,35 @@ function findBestCombination(requiredAmount, options) {
   }
 }
 
-const specialEssentialOilBottleMl = computed(() => {
-  return Number(packOptions.specialEssentialOil?.[0]?.size || 15)
-})
-
-const essentialOilDensity = computed(() => {
-  return materials.find((item) => item.key === 'essentialOil')?.density || 0.9
-})
-
-const essentialOilPerContainerMl = computed(() => {
-  const ratio = Number(ratios.essentialOil || 0) / 100
-  const gramsPerContainer = Number(settings.gramsPerContainer || 0)
-  const perContainerGrams = gramsPerContainer * ratio
-  return essentialOilDensity.value > 0 ? perContainerGrams / essentialOilDensity.value : 0
-})
-
-const maxSpecialEssentialOilContainers = computed(() => {
-  const perContainerMl = essentialOilPerContainerMl.value
-  if (perContainerMl <= 0) return 0
-  return Math.floor(specialEssentialOilBottleMl.value / perContainerMl)
-})
+function calculateLeftoverValue(item) {
+  if (item.purchasedAmount <= 0 || item.purchaseCost <= 0 || item.leftoverAmount <= 0) return 0
+  return (item.purchaseCost / item.purchasedAmount) * item.leftoverAmount
+}
 
 const materialResults = computed(() => {
   const rows = []
 
-  materials.forEach((material) => {
-    const ratio = Number(ratios[material.key] || 0) / 100
-    const totalRequiredGrams = totalWeight.value * ratio
+  const totalBaseRequirements = productionPreparationDetails.value.reduce(
+    (acc, line) => {
+      acc.sheaButter += line.sheaButterGrams
+      acc.jojobaOil += line.jojobaOilGrams
+      acc.beeswax += line.beeswaxGrams
+      return acc
+    },
+    {
+      sheaButter: 0,
+      jojobaOil: 0,
+      beeswax: 0,
+    },
+  )
 
-    if (material.key === 'essentialOil') {
-      const perContainerMl = essentialOilPerContainerMl.value
+  const baseMaterialMeta = materials.filter((item) => item.key !== 'essentialOil')
 
-      const maxSpecialCount = Math.min(
-        Number(settings.containerCount || 0),
-        maxSpecialEssentialOilContainers.value,
-      )
-
-      const totalCount = Number(settings.containerCount || 0)
-      const remainingCount = Math.max(0, totalCount - maxSpecialCount)
-
-      const specialRequiredMl = maxSpecialCount * perContainerMl
-      const remainingRequiredMl = remainingCount * perContainerMl
-
-      const eachStandardMl = remainingRequiredMl / 2
-
-      const specialOptions = normalizePackOptions(packOptions.specialEssentialOil)
-      const eucalyptusOptions = normalizePackOptions(packOptions.eucalyptusEssentialOil)
-      const lavenderOptions = normalizePackOptions(packOptions.lavenderEssentialOil)
-
-      const specialPurchase = ratioError.value
-        ? { totalAmount: 0, totalCost: 0, combination: [] }
-        : findBestCombination(specialRequiredMl, specialOptions)
-      const eucalyptusPurchase = ratioError.value
-        ? { totalAmount: 0, totalCost: 0, combination: [] }
-        : findBestCombination(eachStandardMl, eucalyptusOptions)
-      const lavenderPurchase = ratioError.value
-        ? { totalAmount: 0, totalCost: 0, combination: [] }
-        : findBestCombination(eachStandardMl, lavenderOptions)
-
-      rows.push({
-        key: 'essentialOil-special',
-        label: '必買複方精油',
-        unitLabel: 'ml',
-        barClass: 'bg-slate-400',
-        requiredAmount: specialRequiredMl,
-        formula: `${formatNumber(specialEssentialOilBottleMl.value)}ml ÷ ${formatNumber(perContainerMl)}ml/罐 = 最多 ${maxSpecialCount}罐`,
-        purchasedAmount: specialPurchase.totalAmount,
-        purchaseCost: specialPurchase.totalCost,
-        leftoverAmount: Math.max(0, specialPurchase.totalAmount - specialRequiredMl),
-        leftoverWarning: specialPurchase.totalAmount - specialRequiredMl > perContainerMl * 0.1,
-        combination: specialPurchase.combination,
-      })
-
-      rows.push({
-        key: 'essentialOil-eucalyptus',
-        label: '尤加利精油',
-        unitLabel: 'ml',
-        barClass: 'bg-slate-600',
-        requiredAmount: eachStandardMl,
-        formula: `剩餘 ${remainingCount}罐 × ${formatNumber(perContainerMl)}ml ÷ 2`,
-        purchasedAmount: eucalyptusPurchase.totalAmount,
-        purchaseCost: eucalyptusPurchase.totalCost,
-        leftoverAmount: Math.max(0, eucalyptusPurchase.totalAmount - eachStandardMl),
-        leftoverWarning: false,
-        combination: eucalyptusPurchase.combination,
-      })
-
-      rows.push({
-        key: 'essentialOil-lavender',
-        label: '薰衣草精油',
-        unitLabel: 'ml',
-        barClass: 'bg-slate-500',
-        requiredAmount: eachStandardMl,
-        formula: `剩餘 ${remainingCount}罐 × ${formatNumber(perContainerMl)}ml ÷ 2`,
-        purchasedAmount: lavenderPurchase.totalAmount,
-        purchaseCost: lavenderPurchase.totalCost,
-        leftoverAmount: Math.max(0, lavenderPurchase.totalAmount - eachStandardMl),
-        leftoverWarning: false,
-        combination: lavenderPurchase.combination,
-      })
-
-      return
-    }
-
-    const requiredAmount = material.unitLabel === 'ml'
-      ? totalRequiredGrams / material.density
-      : totalRequiredGrams
-
+  baseMaterialMeta.forEach((material) => {
+    const requiredAmount = totalBaseRequirements[material.key]
     const options = normalizePackOptions(packOptions[material.key])
-    const purchase = ratioError.value
+
+    const purchase = hasAnyRatioError.value
       ? { totalAmount: 0, totalCost: 0, combination: [] }
       : findBestCombination(requiredAmount, options)
 
@@ -1018,12 +1097,46 @@ const materialResults = computed(() => {
       unitLabel: material.unitLabel,
       barClass: material.barClass,
       requiredAmount,
-      formula: `${formatNumber(totalWeight.value)}g × ${formatNumber(ratio * 100)}%`,
+      formula: productionPreparationDetails.value
+        .map((line) => `${lineDisplayMap[line.key]} ${formatNumber(line[`${material.key}Grams`] || 0)}g`)
+        .join(' + '),
       purchasedAmount: purchase.totalAmount,
       purchaseCost: purchase.totalCost,
       leftoverAmount: Math.max(0, purchase.totalAmount - requiredAmount),
-      leftoverWarning: purchase.totalAmount - requiredAmount > requiredAmount * 0.1,
+      leftoverWarning: requiredAmount > 0 ? purchase.totalAmount - requiredAmount > requiredAmount * 0.1 : false,
       combination: purchase.combination,
+      lineKey: null,
+      perContainerAmount: Number(settings.containerCount || 0) > 0 ? requiredAmount / Number(settings.containerCount || 0) : 0,
+    })
+  })
+
+  productionPreparationDetails.value.forEach((line) => {
+    const options = normalizePackOptions(packOptions[lineOilPackMap[line.key]])
+    const purchase = hasAnyRatioError.value
+      ? { totalAmount: 0, totalCost: 0, combination: [] }
+      : findBestCombination(line.essentialOilMl, options)
+
+    rows.push({
+      key: `essentialOil-${line.key}`,
+      label: line.label,
+      unitLabel: 'ml',
+      barClass:
+        line.key === 'special'
+          ? 'bg-slate-400'
+          : line.key === 'eucalyptus'
+            ? 'bg-slate-600'
+            : 'bg-slate-500',
+      requiredAmount: line.essentialOilMl,
+      formula: `${formatNumber(line.containers)}罐 × ${formatNumber(getLineEssentialOilPerContainerMl(line.key))}ml/罐`,
+      purchasedAmount: purchase.totalAmount,
+      purchaseCost: purchase.totalCost,
+      leftoverAmount: Math.max(0, purchase.totalAmount - line.essentialOilMl),
+      leftoverWarning: line.essentialOilMl > 0
+        ? purchase.totalAmount - line.essentialOilMl > line.essentialOilMl * 0.1
+        : false,
+      combination: purchase.combination,
+      lineKey: line.key,
+      perContainerAmount: line.containers > 0 ? line.essentialOilMl / line.containers : 0,
     })
   })
 
@@ -1037,7 +1150,7 @@ const materialResults = computed(() => {
 })
 
 const totalMaterialCost = computed(() => {
-  if (ratioError.value) return 0
+  if (hasAnyRatioError.value) return 0
   return materialResults.value.reduce((sum, item) => sum + item.purchaseCost, 0)
 })
 
@@ -1056,9 +1169,9 @@ const costPerContainer = computed(() => {
 })
 
 const unitCostBreakdown = computed(() => {
-  const count = Number(settings.containerCount || 0)
+  const totalCount = Number(settings.containerCount || 0)
 
-  if (count <= 0) {
+  if (totalCount <= 0) {
     return materialResults.value.map((item) => ({
       ...item,
       requiredAmountPerContainer: 0,
@@ -1066,21 +1179,11 @@ const unitCostBreakdown = computed(() => {
     }))
   }
 
-  return materialResults.value.map((item) => {
-    if (item.key.includes('essentialOil')) {
-      return {
-        ...item,
-        requiredAmountPerContainer: essentialOilPerContainerMl.value,
-        costPerContainer: item.purchaseCost / count,
-      }
-    }
-
-    return {
-      ...item,
-      requiredAmountPerContainer: item.requiredAmount / count,
-      costPerContainer: item.purchaseCost / count,
-    }
-  })
+  return materialResults.value.map((item) => ({
+    ...item,
+    requiredAmountPerContainer: item.perContainerAmount,
+    costPerContainer: item.purchaseCost / totalCount,
+  }))
 })
 
 const unitMaterialCostPerContainer = computed(() => {
@@ -1088,88 +1191,6 @@ const unitMaterialCostPerContainer = computed(() => {
   if (count <= 0) return 0
   return totalMaterialCost.value / count
 })
-
-const oilUsageSummary = computed(() => {
-  const totalCount = Number(settings.containerCount || 0)
-  const specialCount = Math.min(totalCount, maxSpecialEssentialOilContainers.value)
-  const remainingCount = Math.max(0, totalCount - specialCount)
-  return {
-    specialCount,
-    remainingCount,
-    eucalyptusCount: remainingCount / 2,
-    lavenderCount: remainingCount / 2,
-  }
-})
-
-const oilPreparation = computed(() => {
-  const perContainerMl = essentialOilPerContainerMl.value
-
-  const specialCount = oilUsageSummary.value.specialCount
-  const eucalyptusCount = oilUsageSummary.value.eucalyptusCount
-  const lavenderCount = oilUsageSummary.value.lavenderCount
-
-  return {
-    specialMl: specialCount * perContainerMl,
-    eucalyptusMl: eucalyptusCount * perContainerMl,
-    lavenderMl: lavenderCount * perContainerMl,
-
-    specialContainers: specialCount,
-    eucalyptusContainers: eucalyptusCount,
-    lavenderContainers: lavenderCount,
-  }
-})
-
-const productionPreparationDetails = computed(() => {
-  const gramsPerContainer = Number(settings.gramsPerContainer || 0)
-
-  const sheaRatio = Number(ratios.sheaButter || 0) / 100
-  const jojobaRatio = Number(ratios.jojobaOil || 0) / 100
-  const beeswaxRatio = Number(ratios.beeswax || 0) / 100
-
-  const lines = [
-    {
-      key: 'special',
-      label: '必買複方精油',
-      containers: oilPreparation.value.specialContainers,
-      essentialOilMl: oilPreparation.value.specialMl,
-    },
-    {
-      key: 'eucalyptus',
-      label: '尤加利精油',
-      containers: oilPreparation.value.eucalyptusContainers,
-      essentialOilMl: oilPreparation.value.eucalyptusMl,
-    },
-    {
-      key: 'lavender',
-      label: '薰衣草精油',
-      containers: oilPreparation.value.lavenderContainers,
-      essentialOilMl: oilPreparation.value.lavenderMl,
-    },
-  ]
-
-  return lines.map((line) => {
-    const totalBaseWeight = line.containers * gramsPerContainer
-
-    return {
-      ...line,
-      sheaButterGrams: totalBaseWeight * sheaRatio,
-      jojobaOilGrams: totalBaseWeight * jojobaRatio,
-      beeswaxGrams: totalBaseWeight * beeswaxRatio,
-    }
-  })
-})
-
-function calculateLeftoverValue(item) {
-  if (item.purchasedAmount <= 0 || item.purchaseCost <= 0 || item.leftoverAmount <= 0) return 0
-  return (item.purchaseCost / item.purchasedAmount) * item.leftoverAmount
-}
-
-function unitPricePerMl(price, size) {
-  const normalizedPrice = Number(price || 0)
-  const normalizedSize = Number(size || 0)
-  if (normalizedPrice <= 0 || normalizedSize <= 0) return 0
-  return normalizedPrice / normalizedSize
-}
 
 function toggleMaterialSection(key) {
   openMaterialSections[key] = !openMaterialSections[key]
@@ -1180,15 +1201,27 @@ function materialCostShare(cost) {
   return Math.round((cost / totalMaterialCost.value) * 100)
 }
 
+function unitPricePerMl(price, size) {
+  const normalizedPrice = Number(price || 0)
+  const normalizedSize = Number(size || 0)
+  if (normalizedPrice <= 0 || normalizedSize <= 0) return 0
+  return normalizedPrice / normalizedSize
+}
+
 function resetDefaults() {
   Object.assign(settings, structuredClone(defaultState.settings))
-  Object.assign(ratios, structuredClone(defaultState.ratios))
+
+  Object.keys(ratiosByLine).forEach((lineKey) => {
+    Object.assign(ratiosByLine[lineKey], structuredClone(defaultState.ratiosByLine[lineKey]))
+  })
+
   Object.keys(packOptions).forEach((key) => {
     packOptions[key] = structuredClone(defaultState.packOptions[key])
   })
 
   isPriceSettingsOpen.value = false
   isUnitCostBreakdownOpen.value = false
+
   Object.assign(openMaterialSections, {
     sheaButter: true,
     jojobaOil: false,
@@ -1209,5 +1242,9 @@ function formatNumber(value) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })
+}
+function mlToGram(ml) {
+  const density = essentialOilDensity.value || 0.9
+  return ml * density
 }
 </script>
